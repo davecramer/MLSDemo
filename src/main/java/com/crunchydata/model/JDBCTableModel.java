@@ -1,6 +1,5 @@
 package com.crunchydata.model;
 
-import com.crunchydata.postgres.PGServiceFile;
 import com.crunchydata.service.QueryExecutor;
 
 import javax.swing.table.AbstractTableModel;
@@ -13,23 +12,17 @@ public class JDBCTableModel extends AbstractTableModel {
     List<Document> documents;
 
     public JDBCTableModel() {
-        try {
-            PGServiceFile pgServiceFile = PGServiceFile.load();
-            pgServiceFile.getSections();
-            setService(pgServiceFile.getService("mlstest"));
-        } catch (SQLException exception) {
-            exception.printStackTrace();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+
     }
 
     public void setService(Map<String, String> service) throws SQLException{
         queryExecutor = QueryExecutor.getQueryExecutor(service);
-        documents = queryExecutor.getDocuments();
+        updateModel();
     }
 
-    void updateModel() {
+    public void updateModel() {
+        documents = queryExecutor.getDocuments();
+        this.fireTableDataChanged();
 
     }
     /**

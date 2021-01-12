@@ -15,6 +15,7 @@ import java.awt.*;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.io.File;
+import java.sql.SQLException;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -25,9 +26,16 @@ public class UpperPanel extends JSplitPane {
     PGServiceFile pgServiceFile;
     DataTable dataTable;
     UpdateAble updateAble;
-    String service = "mlstest";
+    String serviceName = "mlstest";
 
     public UpperPanel(int width, int height, UpdateAble updateAble) {
+
+        try {
+            pgServiceFile = PGServiceFile.load();
+        } catch (Exception e) {
+            logger.info(e.getMessage());
+        }
+
         DocumentService documentService = new DocumentService();
         this.updateAble = updateAble;
         orientation = VERTICAL_SPLIT;
@@ -39,16 +47,15 @@ public class UpperPanel extends JSplitPane {
         upper.setPreferredSize(new Dimension(width,height/4));
         JPanel lower = new JPanel();
         lower.setPreferredSize(new Dimension(width,height/2 ));
-        dataTable = new DataTable(lower.getPreferredSize());
+        try {
+            dataTable = new DataTable(lower.getPreferredSize(), pgServiceFile.getService(serviceName));
+        } catch (SQLException throwables) {
+            logger.info(throwables.getMessage());
+        }
         JScrollPane dataScrollPane = new JScrollPane(dataTable);
         dataScrollPane.setPreferredSize(lower.getPreferredSize());
 
 
-        try {
-            pgServiceFile = PGServiceFile.load();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
 
         JFilePicker filePicker =  new JFilePicker("File", "Browse");
         // access JFileChooser class directly
@@ -61,10 +68,12 @@ public class UpperPanel extends JSplitPane {
              @Override
              public void save(String fileName) {
                  try {
-                     Document document = documentService.insertDocument(fileName, service);
-                     documentService.updateTsVector(document, service);
+                     Document document = documentService.insertDocument(fileName, serviceName);
+                     documentService.updateTsVector(document, serviceName);
                      BodyContentHandler handler = new ParseDoc().parseDoc(document);
                      updateAble.update(handler.toString());
+                     dataTable.loadData();
+
 
                  } catch (Exception e) {
                      logger.info(e.getMessage());
@@ -84,7 +93,7 @@ public class UpperPanel extends JSplitPane {
             @Override
             public void itemStateChanged(ItemEvent e) {
                 if ( e.getStateChange() == ItemEvent.SELECTED ) {
-                    setService(e.getItem().toString());
+                    setServiceName(e.getItem().toString());
                 }
             }
         });
@@ -97,7 +106,7 @@ public class UpperPanel extends JSplitPane {
                     try {
                         int index = dataTable.table.getSelectedRow();
                         Document document = dataTable.model.getDocument(index);
-                        QueryExecutor queryExecutor = QueryExecutor.getQueryExecutor(service);
+                        QueryExecutor queryExecutor = QueryExecutor.getQueryExecutor(serviceName);
                         BodyContentHandler handler = new ParseDoc().parseDoc(queryExecutor, document.getId());
                         updateAble.update(handler.toString());
                     } catch(Exception ex ){
@@ -114,9 +123,17 @@ public class UpperPanel extends JSplitPane {
         setTopComponent(upper);
         setBottomComponent(lower);
     }
-    void setService(String service) {
+
+    public void setServiceName(String serviceName){
+        this.serviceName = serviceName;
+        try {
+            setService(pgServiceFile.getService(serviceName));
+        } catch (SQLException e){
+            logger.info(e.getMessage());
+        }
+    }
+    void setService(Map<String, String> service) {
         logger.log(Level.INFO, "Service: {0}", service);
-        this.service = service;
         dataTable.setService(service);
     }
 }
