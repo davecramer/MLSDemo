@@ -29,5 +29,5 @@ shadowJar {
 
 application {
     // Define the main class for the application.
-    mainClassName = 'rocks.postgres.JDBCBench'
+    mainClassName = 'com.crunchydata.MLSTest'
 }
